@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { StyleSheet, SafeAreaView, Platform, StatusBar, Dimensions, BackHandler, RefreshControl, ScrollView, Alert } from 'react-native';
-import { WebView, WebViewNavigation } from 'react-native-webview';
+import { StyleSheet, SafeAreaView, Platform, StatusBar, Dimensions, BackHandler, Alert, TouchableOpacity, Text, ActivityIndicator, View } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { ThemedView } from '@/components/ThemedView';
 
 // Get device dimensions for responsive layout
@@ -10,12 +10,14 @@ export default function AppScreen() {
   const webViewRef = useRef<WebView>(null);
   const [canGoBack, setCanGoBack] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Meta viewport tag to ensure proper scaling but allow zooming
+  // Fix the injectedJavaScript string syntax
   const injectedJavaScript = `
-    const meta = document.createElement('meta'); 
-    meta.setAttribute('content', 'width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10.0, user-scalable=yes'); 
-    meta.setAttribute('name', 'viewport'); 
+    const meta = document.createElement('meta');
+    meta.setAttribute('content', 'width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10.0, user-scalable=yes');
+    meta.setAttribute('name', 'viewport');
     document.getElementsByTagName('head')[0].appendChild(meta);
     true;
   `;
@@ -37,11 +39,8 @@ export default function AppScreen() {
     return () => backHandler.remove();
   }, [canGoBack]);
 
-  // Handle pull to refresh with confirmation
+  // Handle refresh with confirmation
   const onRefresh = () => {
-    // Stop the refresh animation immediately
-    setRefreshing(false);
-    
     // Show confirmation alert
     Alert.alert(
       "Refresh Application",
@@ -74,40 +73,50 @@ export default function AppScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={styles.scrollView}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#2196F3']}
-            tintColor="#2196F3"
-          />
-        }
-      >
-        <ThemedView style={styles.container}>
-          <WebView 
-            ref={webViewRef}
-            source={{ uri: 'http://192.168.19.47:5173/' }} 
-            style={styles.webview}
-            injectedJavaScript={injectedJavaScript}
-            onMessage={() => {}}
-            scalesPageToFit={true}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            scrollEnabled={true}
-            bounces={true}
-            userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"
-            showsVerticalScrollIndicator={false}
-            showsHorizontalScrollIndicator={false}
-            contentInset={{ top: 0, left: 0, bottom: 0, right: 0 }}
-            automaticallyAdjustContentInsets={true}
-            onNavigationStateChange={(navState) => {
-              setCanGoBack(navState.canGoBack);
-            }}
-          />
-        </ThemedView>
-      </ScrollView>
+      <ThemedView style={styles.container}>
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2196F3" />
+          </View>
+        )}
+        <WebView
+          ref={webViewRef}
+          source={{ uri: 'https://chagedgoldapp.onrender.com/' }}
+          style={styles.webview}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          mixedContentMode="always"
+          originWhitelist={['*']}
+          thirdPartyCookiesEnabled={true}
+          sharedCookiesEnabled={true}
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
+          onShouldStartLoadWithRequest={() => true}
+          onNavigationStateChange={(navState) => {
+            setCanGoBack(navState.canGoBack);
+            console.log('Navigating to:', navState.url);
+          }}
+          onLoadEnd={() => setLoading(false)}
+          onError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            Alert.alert('WebView error', nativeEvent.description);
+            console.warn('WebView error: ', nativeEvent);
+          }}
+          startInLoadingState={true}
+          renderError={(errorName) => (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <Text style={{ color: 'red' }}>Failed to load page: {errorName}</Text>
+            </View>
+          )}
+        />
+        <TouchableOpacity
+          style={styles.refreshButton}
+          onPress={onRefresh}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.refreshButtonText}>↻</Text>
+        </TouchableOpacity>
+      </ThemedView>
     </SafeAreaView>
   );
 }
@@ -118,11 +127,6 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     backgroundColor: '#fff',
   },
-  scrollView: {
-    flex: 1,
-    width: width,
-    height: height,
-  },
   container: {
     flex: 1,
     width: width,
@@ -131,4 +135,36 @@ const styles = StyleSheet.create({
   webview: {
     flex: 1,
   },
-}); 
+  loadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    zIndex: 1,
+  },
+  refreshButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#2196F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+  },
+  refreshButtonText: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+});
