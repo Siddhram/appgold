@@ -81,7 +81,7 @@ export default function AppScreen() {
         )}
         <WebView
           ref={webViewRef}
-          source={{ uri: 'https://chagedgoldapp.onrender.com/' }}
+          source={{ uri: 'https://goldfinal3.onrender.com/' }}
           style={styles.webview}
           javaScriptEnabled={true}
           domStorageEnabled={true}
