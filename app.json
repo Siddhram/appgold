@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "my-webview-app",
+    "name": "Matka mela",
     "slug": "my-webview-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mywebviewapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true
     },
@@ -18,7 +18,17 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.siddharam_sutar.mywebviewapp",
-      "permissions": ["INTERNET"]
+      "permissions": [
+        "CAMERA",
+  "RECORD_AUDIO",
+  "ACCESS_COARSE_LOCATION", 
+  "ACCESS_FINE_LOCATION",
+  "ACCESS_BACKGROUND_LOCATION",
+  "RECORD_AUDIO",
+  "INTERNET",
+  "READ_EXTERNAL_STORAGE",
+  "WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "bundler": "metro",
