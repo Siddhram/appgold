@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Matka mela",
+    "name": "शांताई महिला बाजार",
     "slug": "my-webview-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -20,14 +20,14 @@
       "package": "com.siddharam_sutar.mywebviewapp",
       "permissions": [
         "CAMERA",
-  "RECORD_AUDIO",
-  "ACCESS_COARSE_LOCATION", 
-  "ACCESS_FINE_LOCATION",
-  "ACCESS_BACKGROUND_LOCATION",
-  "RECORD_AUDIO",
-  "INTERNET",
-  "READ_EXTERNAL_STORAGE",
-  "WRITE_EXTERNAL_STORAGE"
+        "RECORD_AUDIO",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "RECORD_AUDIO",
+        "INTERNET",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {

@@ -1,4 +1,3 @@
-import { ThemedView } from '@/components/ThemedView';
 import * as FileSystem from 'expo-file-system';
 import { Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -7,11 +6,9 @@ import {
   ActivityIndicator,
   Alert,
   BackHandler,
-  Dimensions,
+  Linking,
   PermissionsAndroid,
   Platform,
-  SafeAreaView,
-  StatusBar,
   StyleSheet,
   Text,
   View
@@ -19,22 +16,10 @@ import {
 import RNBlobUtil from 'react-native-blob-util';
 import { WebView } from 'react-native-webview';
 
-// Device dimensions
-const { width, height } = Dimensions.get('window');
-
 export default function AppScreen() {
   const webViewRef = useRef<WebView>(null);
   const [canGoBack, setCanGoBack] = useState(false);
   const [loading, setLoading] = useState(true);
-
-  // Inject viewport scaling
-  const injectedJavaScript = `
-    const meta = document.createElement('meta');
-    meta.setAttribute('content', 'width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=10.0, user-scalable=yes');
-    meta.setAttribute('name', 'viewport');
-    document.getElementsByTagName('head')[0].appendChild(meta);
-    true;
-  `;
 
   // Handle back press
   useEffect(() => {
@@ -238,85 +223,130 @@ export default function AppScreen() {
     return mimeTypes[extension.toLowerCase()] || 'application/octet-stream';
   };
 
+  // Handle external apps (UPI payments, WhatsApp, Phone calls, Email, etc.)
+  const handleExternalUrl = async (url: string) => {
+    try {
+      console.log('Opening external URL:', url);
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        // Attempt open anyway as fallback
+        await Linking.openURL(url);
+      }
+    } catch (error) {
+      console.error('Failed to open external app:', error);
+      if (url.toLowerCase().startsWith('upi:')) {
+        Alert.alert(
+          'UPI App Not Found',
+          'Please install a UPI payment app like Google Pay, PhonePe, Paytm, or BHIM to complete this payment.'
+        );
+      } else {
+        Alert.alert('Cannot Open App', 'No application found on your device to handle this action.');
+      }
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ThemedView style={styles.container}>
-        {loading && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#2196F3" />
-          </View>
-        )}
-        <WebView
-          ref={webViewRef}
-          source={{ uri: 'https://wms1.vercel.app/' }}
-          style={styles.webview}
-          javaScriptEnabled
-          domStorageEnabled
-          mixedContentMode="always"
-          originWhitelist={['*']}
-          thirdPartyCookiesEnabled
-          sharedCookiesEnabled
-          injectedJavaScript={injectedJavaScript}
-          showsVerticalScrollIndicator={false}
-          showsHorizontalScrollIndicator={false}
-          onShouldStartLoadWithRequest={(request) => {
-            console.log('Intercepted URL:', request.url);
+    <View style={styles.container}>
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2196F3" />
+        </View>
+      )}
+      <WebView
+        ref={webViewRef}
+        source={{ uri: 'https://shantai-mahila-bajar-app-frontend.vercel.app/' }}
+        style={styles.webview}
+        javaScriptEnabled
+        domStorageEnabled
+        mixedContentMode="always"
+        originWhitelist={['*']}
+        thirdPartyCookiesEnabled
+        sharedCookiesEnabled
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
+        onShouldStartLoadWithRequest={(request) => {
+          console.log('Intercepted URL:', request.url);
+          const rawUrl = request.url;
+          const lowerUrl = rawUrl.toLowerCase();
 
-            // Enhanced file detection - check for common file extensions and download parameters
-            const url = request.url.toLowerCase();
-            const isDownloadFile = 
-              url.includes('.csv') ||
-              url.includes('.pdf') || 
-              url.includes('.xlsx') ||
-              url.includes('.xls') ||
-              url.includes('.doc') ||
-              url.includes('.docx') ||
-              url.includes('.txt') ||
-              url.includes('.zip') ||
-              url.includes('download=') ||
-              url.includes('attachment=') ||
-              url.includes('export=') ||
-              request.url.includes('Content-Disposition');
+          // 1. Intercept external protocols (UPI payments, WhatsApp, Tel, Mailto, etc.)
+          const isWebProtocol =
+            lowerUrl.startsWith('http://') ||
+            lowerUrl.startsWith('https://') ||
+            lowerUrl.startsWith('about:') ||
+            lowerUrl.startsWith('data:') ||
+            lowerUrl.startsWith('blob:');
 
-            if (isDownloadFile) {
-              console.log('Detected download URL, initiating download...');
-              handleDownload(request.url);
-              return false; // prevent WebView from navigating
-            }
-            
-            return true; // allow normal navigation
-          }}
-          onNavigationStateChange={(navState) => setCanGoBack(navState.canGoBack)}
-          onLoadEnd={() => setLoading(false)}
-          onError={({ nativeEvent }) => {
-            Alert.alert('WebView error', nativeEvent.description);
-            console.warn('WebView error: ', nativeEvent);
-          }}
-          startInLoadingState={true}
-          renderError={(errorName) => (
+          if (!isWebProtocol) {
+            handleExternalUrl(rawUrl);
+            return false; // Prevent WebView from trying to navigate internally to custom scheme
+          }
+
+          // 2. Enhanced file detection - check for common file extensions and download parameters
+          const isDownloadFile = 
+            lowerUrl.includes('.csv') ||
+            lowerUrl.includes('.pdf') || 
+            lowerUrl.includes('.xlsx') ||
+            lowerUrl.includes('.xls') ||
+            lowerUrl.includes('.doc') ||
+            lowerUrl.includes('.docx') ||
+            lowerUrl.includes('.txt') ||
+            lowerUrl.includes('.zip') ||
+            lowerUrl.includes('download=') ||
+            lowerUrl.includes('attachment=') ||
+            lowerUrl.includes('export=') ||
+            rawUrl.includes('Content-Disposition');
+
+          if (isDownloadFile) {
+            console.log('Detected download URL, initiating download...');
+            handleDownload(rawUrl);
+            return false; // prevent WebView from navigating
+          }
+          
+          return true; // allow normal navigation
+        }}
+        onNavigationStateChange={(navState) => setCanGoBack(navState.canGoBack)}
+        onLoadEnd={() => setLoading(false)}
+        onError={({ nativeEvent }) => {
+          if (nativeEvent.description?.includes('ERR_UNKNOWN_URL_SCHEME')) {
+            return;
+          }
+          Alert.alert('WebView error', nativeEvent.description);
+          console.warn('WebView error: ', nativeEvent);
+        }}
+        startInLoadingState={true}
+        renderError={(errorName) => {
+          if (errorName?.includes('ERR_UNKNOWN_URL_SCHEME')) {
+            return (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#2196F3" />
+              </View>
+            );
+          }
+          return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
               <Text style={{ color: 'red' }}>Failed to load page: {errorName}</Text>
             </View>
-          )}
-        />
-      </ThemedView>
-    </SafeAreaView>
+          );
+        }}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-    backgroundColor: '#fff',
-  },
   container: {
     flex: 1,
-    width,
-    height,
+    margin: 0,
+    padding: 0,
+    backgroundColor: '#fff',
   },
   webview: {
     flex: 1,
+    margin: 0,
+    padding: 0,
   },
   loadingContainer: {
     position: 'absolute',
